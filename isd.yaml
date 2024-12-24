@@ -1,0 +1,96 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: argo-application
+  title: Argo CD Application Template
+  description: Template to create Argo CD Application manifests
+  tags:
+    - argocd
+    - kubernetes
+    - application
+spec:
+  owner: team@example.com
+  type: service
+  parameters:
+    - title: Application Metadata
+      properties:
+        appName:
+          title: Application Name
+          type: string
+          description: Name of the Argo CD application
+        namespace:
+          title: Namespace
+          type: string
+          description: Kubernetes namespace for the application
+          default: default
+      required:
+        - appName
+        - namespace
+
+    - title: Source Configuration
+      properties:
+        repoURL:
+          title: Repository URL
+          type: string
+          description: Git repository URL for the Helm chart
+        chart:
+          title: Helm Chart Name
+          type: string
+          description: Name of the Helm chart
+        targetRevision:
+          title: Target Revision
+          type: string
+          description: Chart version to deploy
+          default: main
+      required:
+        - repoURL
+        - chart
+
+    - title: Destination Configuration
+      properties:
+        server:
+          title: Cluster Server URL
+          type: string
+          description: Kubernetes cluster server URL
+          default: https://kubernetes.default.svc
+        destinationName:
+          title: Destination Name
+          type: string
+          description: Logical name for the destination cluster
+          default: ""
+      required:
+        - server
+
+  steps:
+    - id: fetch
+      name: Fetch the template
+      action: fetch:plain
+      input:
+        url: ./argo-application-template.yaml
+
+    - id: generate
+      name: Generate Argo CD Application manifest
+      action: scaffolder:template
+      input:
+        path: ./template/argo-application.yaml
+        values:
+          appName: ${{ parameters.appName }}
+          namespace: ${{ parameters.namespace }}
+          repoURL: ${{ parameters.repoURL }}
+          chart: ${{ parameters.chart }}
+          targetRevision: ${{ parameters.targetRevision }}
+          server: ${{ parameters.server }}
+          destinationName: ${{ parameters.destinationName }}
+
+    - id: publish
+      name: Publish the manifest
+      action: publish:github
+      input:
+        repoUrl: https://github.com/{{ parameters.repo }}
+        branch: main
+        filePath: manifests/${{ parameters.appName }}.yaml
+
+  output:
+    links:
+      - title: View the Application YAML
+        url: https://github.com/{{ parameters.repo }}/blob/main/manifests/${{ parameters.appName }}.yaml
